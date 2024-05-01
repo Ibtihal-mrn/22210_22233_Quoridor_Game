@@ -2,12 +2,11 @@
 import socket
 import json
 import random
-from turtle import position
 
-#variable du message à envoyer au moement de la connexion
+#variable du message à envoyer au mement de la connexion
 data_connection = json.dumps({
    "request": "subscribe",
-   "port": 4099, #on précise le port sur lequel le serveur va nous envoyer des requêtes 
+   "port": 6099, #on précise le port sur lequel le serveur va nous envoyer des requêtes 
    "name": "Ibtihal",
    "matricules": ["22210", "67890"]
     })
@@ -15,7 +14,7 @@ data_connection = json.dumps({
 #variable du pong 
 data_pong = json.dumps({"response":"pong"})
 
-
+#Se connecter au serveur
 def game_connection(data_connection): #Fonction qui gère la connection du jeu : on envoie la requete et on recoit bien la réponse du serveur
     host, port = ('127.0.0.1', 3000) #On va devoir se connecter sur le port 3000 pour une adresse quelconque
     socket_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #le socket client est celui qui commence la communication
@@ -25,61 +24,18 @@ def game_connection(data_connection): #Fonction qui gère la connection du jeu :
         data_connection = data_connection.encode("utf-8") #on encode en ut8 le message json a envoyer
         socket_client.sendall(data_connection) #on envoie notre message sur le port 3000 via le réseau
         print("message sent")
-        response = socket_client.recv(4096) #si le message est bien envoyé, on recoit la réponse de retour 
+        response = b''
+        while True:
+            chunk = socket_client.recv(2048)
+            if not chunk:
+                break
+            response += chunk
         json.loads(response.decode()) #on utilise le load pour recevoir du json et le convertir en python
         print(response)
         socket_client.close()
     except Exception:
         print("Connection Failed")
 
-
-
-def game_ping_pong(data_pong):
-    socket_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #le socket serveur est le socket qui écoute, il  ne commence pas la conv
-    try:
-        socket_server.bind(('0.0.0.0', 4099)) #on lie le socket serveur à une adresse et un port sur lequel on sera en écoute
-        socket_server.listen() #on se met en écoute
-        print('En écoute') #on va printer ça ici afin de s'assurer que le socket est bien en écoute sur le réseau
-        while True :
-            conn, address = socket_server.accept() #on acccepte les connexions
-            message = json.loads(conn.recv(2048).decode()) #ping est le message qu'on va recevoir en json, on le décode ensuite
-            print('ping received') 
-            if "request" in message: #si le format du message est bon, on va pouvoir renvoyer une réponse
-                if message['request'] == 'ping':
-                    print("format ping correct")
-                    pong = data_pong.encode("utf-8") 
-                    conn.sendall(pong) #pour un socket server, c'est avec le conn qu'on doit écouter et envoyer des messages, le socket serveur lui reste à l'écoute des éventuelles connexions
-                    print("pong envoyé")
-                if message['request'] == 'move':
-                    print('requete de jeu correcte')
-                    
-                else : 
-                    print("Format ping incorrect")
-    except Exception as e:
-        print("Sent failed", e)
-
-
-
-# def play_request(data_play):
-#     socket_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#     try:
-#         socket_server.bind(('0.0.0.0', 4000))
-#         socket_server.listen()
-#         print('prêt à recevoir des requêtes de jeux')
-#         while True:
-#             conn, address = socket_server.accept()
-#             request_play = json.loads(conn.recv(2048).decode())
-#             print('requête de jeux acceptée')
-#             if "request" in request_play:
-#                 if request_play['request'] == "play":
-#                     print('Requête de jeu correcte')
-#                     play = data_play.encode('utf-8')
-#                     conn.sendall(play)
-#                     print("mouvement envoyé")
-#                 else:
-#                     print("Requête non reconnue")
-#     except Exception:
-#         print('erreur')
 
 #Il faut commencer par implémenter toutes les méthodes qui permettent de se déplacer
 # Déplacement possible : Gauche, droite, haut, bas
@@ -151,9 +107,6 @@ def actual_postion(server_json):
             position_in_list = elem.index(player) #on récupère la position de joueur car le pion est représenté par le 0
             return [i, position_in_list] #on renvoie numéro de la liste où se trouve le joueur et sa position
 
-#Une fois que toutes les méthodes sont faites, je peux implémenter une méthode qui va gérer le jeu du joueur, donc je vais lui 
-# apprendre à se déplacer 
-
 def decide_move(server_json):
     current_position = actual_postion(server_json)
     possible_moves = []
@@ -196,11 +149,50 @@ def move_player(server_json): #dans cette fonction on va apprendre à notre ia �
                 print("déplacement dans la direction", direction, "non autorisé")
 
 
+#Répondre au Pong
+def play(data_pong):
+    socket_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #le socket serveur est le socket qui écoute, il  ne commence pas la conv
+    try:
+        socket_server.bind(('0.0.0.0', 6099)) #on lie le socket serveur à une adresse et un port sur lequel on sera en écoute
+        socket_server.listen() #on se met en écoute
+        print('En écoute') #on va printer ça ici afin de s'assurer que le socket est bien en écoute sur le réseau
+        #Entrer dans une boucle infinie pour répondre à des requêtes tants que c'est possible
+        while True :
+            conn, address = socket_server.accept() #on acccepte les connexions
+            server_json = b''
+            while True:
+                chunk = conn.recv(2048)
+                if not chunk:
+                    break
+                server_json += chunk
+            server_json = json.loads(server_json.decode()) #ping est le message qu'on va recevoir en json, on le décode ensuite
+            print("Message reçu:", server_json) 
+
+            #Vérifier qu'il s'agit bien d'une requête
+            if "request" in server_json: 
+                if server_json['request'] == 'ping':
+                    pong = data_pong.encode("utf-8") 
+                    conn.sendall(pong) #pour un socket server, c'est avec le conn qu'on doit écouter et envoyer des messages, le socket serveur lui reste à l'écoute des éventuelles connexions
+                    print("réponse envoyé:", pong)
+
+                if server_json['request'] == 'play':
+                    response = json.dumps({ "response": "move", 
+                                "move": decide_move(server_json), #je comprends pas pourquoi ça marche pas
+                                "message": "Fun message"})
+                    response_encode = response.encode("utf-8")
+                    conn.sendall(response_encode)
+                    print("réponse envoyé:", response_encode)    
+                else : 
+                    print("Il ne s'agit pas d'une requête")
+    except Exception as e:
+        print("Sent failed", e)
+
+
 
 
 
 game_connection(data_connection)
-game_ping_pong(data_pong)
+play(data_pong)
 
 
 
