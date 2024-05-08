@@ -1,7 +1,8 @@
+from http import server
 import socket
 import json
 import random
-from turtle import position
+
 
 # Variables globales
 data_connection = json.dumps({
@@ -30,13 +31,65 @@ def game_connection(data_connection):
     except Exception:
         print("Connection Failed")
 
-def actual_postion(server_json):
+def actual_position(server_json):
     board = server_json['state']['board']
     player = server_json['state']['current']
     for i, elem in enumerate(board):
         if player in elem:
             position_in_list = elem.index(player)
             return [i, position_in_list]
+
+#Créer une fonction qui calcule la distantce qui me sépare du bord du plateau en fonction de si je suis le 1 ou le 2 
+def distance_to_win(server_json, actual_position):
+    # Par défaut, je mets que pawn = 0 
+    board = server_json['state']['board']
+    # Je vérifie si la case sur laquelle je me trouve est un 0 
+    if server_json["state"]["board"][actual_position[0]][actual_position[1]] == 0 : 
+        # Je renvoie la distance verticale qui me sépare du bord 
+        return len(board) - actual_position[0] - 1
+    # Je vérifie si la case sur laquelle je me trouve est un 1 
+    elif server_json["state"]["board"][actual_position[0]][actual_position[1]] == 1 :
+        # Je renvoie la distance verticale qui me renvoie du bord
+        return actual_position[0] 
+
+# Créer une fonction qui calcule la distance qui sépare mon adversaire du bord du plateau en fonction de si il est le 1 ou le 0
+# def distance_player2_to_win(server_json):
+#     #ici je vais suivre la même logique que avec le add blocker pour calculer ma distance 
+#     board = server_json['state']['board']
+#     pawn = 1
+#     #position_player_2=None
+#     if server_json["state"]["players"][1] == "Mournin":
+#         pawn = 0
+#         for i, elem in enumerate(board):
+#             if pawn in elem:
+#                 position_in_list = elem.index(pawn)
+#                 position_player_2=[i, position_in_list]
+#                 return 16 - int(position_player_2[0])
+#     else: 
+#         for i, elem in enumerate(board):
+#             if pawn in elem:
+#                 position_in_list = elem.index(pawn)
+#                 position_player_2 = [i, position_in_list]
+#                 return position_player_2[0]
+
+def distance_player2_to_win(server_json):
+    board = server_json['state']['board']
+    pawn = 1 if server_json["state"]["players"][1] == "Mournin" else 0
+
+    # Trouver la position actuelle de votre adversaire
+    for i, row in enumerate(board):
+        for j, cell in enumerate(row):
+            if cell == pawn:
+                position_adversaire = (i, j)
+                break
+
+    # Calculer la distance jusqu'au bord opposé pour votre adversaire
+    if server_json['state']['current'] == 1:  # Si le joueur se déplace vers le haut
+        return position_adversaire[0]
+    else:  # Si le joueur se déplace vers le bas
+        return len(board) - position_adversaire[0] - 1
+
+        
 
 def move_right(server_json, actual_position):
     pawn = 0
@@ -95,7 +148,7 @@ def move_bottom(server_json, actual_position):
     return False
 
 def decide_move(server_json):
-    current_position = actual_postion(server_json)
+    current_position = actual_position(server_json)
     possible_moves = []
     if move_top(server_json, current_position):
         possible_moves.append("top")
@@ -116,6 +169,29 @@ def decide_move(server_json):
     if chosen_direction == "right":
         return move_right(server_json, current_position)
 
+# def decide_best_move(server_json, actual_position):
+#     current_position = actual_position(server_json)
+#     board = server_json['state']['board']
+#     possible_moves = []
+#     if move_top(server_json, current_position):
+#         possible_moves.append("top")
+#     if move_bottom(server_json, current_position):
+#         possible_moves.append("bottom")
+#     if move_right(server_json, current_position):
+#         possible_moves.append("right")
+#     if move_left(server_json, current_position):
+#         possible_moves.append("left")
+    
+    #Maintenant qu'on a la liste de tous les mouv possibles, on va évaluer les possibilités pour choisir quel est le mouvement le plus optimal
+    #Pour ce faire, on va poser des conditions en fonctions de si le mouv se trouve dans la liste et ensuite calculer la distance entre la position mise à jour 
+    #avec le mouv et le bord du plateau. 
+    # Attention, il va falloir vérifier ces conditions pour les 2 cas, donc en fonction de si je suis en 1 ou en 0
+
+    if server_json['state']['board'][actual_position[0]][actual_position[1]]==0:
+        if "top" in possible_moves:
+            new_position = move_top(server_json, current_position)
+            distance_top = len
+
 #Créer la méthode qui permet d'ajouter des murs
 # Pour ajouter des murs, on doit renvoyer une liste de deux listes car le mur se place sur deux coordonées
 
@@ -135,7 +211,7 @@ def add_blocker(server_json):
                 position_in_list = elem.index(pawn)
                 position_player_2=[i, position_in_list]
         print("La position de mon adversaire est", position_player_2)
-        if position_player_2[0] + 1 < len(server_json["state"]["board"]) and position_player_2[1]+2 < len(server_json["state"]["board"]) or position_player_2[2]-2 > 0:
+        if position_player_2[0] + 1 < len(server_json["state"]["board"]) and position_player_2[1]+2 < len(server_json["state"]["board"]):
         #je vais vérifier si les deux coordonnées où je veux mettre un mur sont dispo dispo pour un mur car 3 représente une case pour un mur où il n'y en a pas encore
             if server_json["state"]["board"][position_player_2[0]+1][position_player_2[1]] == 3 and server_json["state"]["board"][position_player_2[0]+1][position_player_2[1]+2] == 3:
                 return{"type" : "blocker", "position" : [[position_player_2[0]+1, position_player_2[1]], [position_player_2[0]+1, position_player_2[1]+2]]}
@@ -145,9 +221,11 @@ def add_blocker(server_json):
                 position_in_list = elem.index(pawn)
                 position_player_2 = [i, position_in_list]
         print("position player 2", position_player_2)
-        if position_player_2[0]-1 > 0 and position_player_2[1]+2 < len(server_json["state"]["board"]) or position_player_2[1]-2 >0:
+        if position_player_2[0]-1 > 0 and position_player_2[1]+2 < len(server_json["state"]["board"]) :
             if server_json["state"]["board"][position_player_2[0]-1][position_player_2[1]] == 3 and server_json["state"]["board"][position_player_2[0]-1][position_player_2[1]+2] == 3:
-                return {"type" : "blocker", "position" : [position_player_2[0]-1, position_player_2[1], [position_player_2[0]-1, position_player_2[1]+2]]}
+                return {"type" : "blocker", "position" : [[position_player_2[0]-1, position_player_2[1]], [position_player_2[0]-1, position_player_2[1]+2]]}
+    return False
+
 
 
 def play(data_pong):
@@ -160,33 +238,40 @@ def play(data_pong):
             conn, address = socket_server.accept()
             server_json = json.loads(conn.recv(10000).decode())
             print("Message reçu:", server_json)
+
             if "request" in server_json:
+
                 if server_json['request'] == 'ping':
                     pong = data_pong.encode("utf-8")
                     conn.sendall(pong)
                     print("réponse envoyé:", pong)
-                # elif server_json['request'] == 'play':
-                #     move = decide_move(server_json)
-                #     print(f"Move: {move}")  # Add this line
-                #     response = json.dumps({
-                #         "response": "move",
-                #         "move": move,
-                #         "message": "Fun message"
-                #     })
-                #     response_encode = response.encode("utf-8")
-                #     print("réponse envoyé:", response_encode)
-                #     conn.sendall(response_encode)
+
                 elif server_json['request'] == 'play':
-                    block = add_blocker(server_json)
-                    response = json.dumps({
-                        "response": "move",
-                        "move": block,
-                        "message": "fun message"
-                    })
-                    response_encode = response.encode("utf-8")
-                    print("réponse envoyé:", response_encode)
-                    conn.sendall(response_encode)
-                    
+                    current_position = actual_position(server_json)
+                    my_distance = distance_to_win(server_json, actual_position(server_json))
+                    your_distance = distance_player2_to_win(server_json)
+                    if my_distance > your_distance:
+                        move = decide_move(server_json)
+                        print(f"Move: {move}")  # Add this line
+                        response = json.dumps({
+                            "response": "move",
+                            "move": move,
+                            "message": "Fun message"
+                        })
+                        response_encode = response.encode("utf-8")
+                        print("réponse envoyé:", response_encode)
+                        conn.sendall(response_encode)
+                    else :                     
+                        block = add_blocker(server_json)
+                        response = json.dumps({
+                            "response": "move",
+                            "move": block,
+                            "message": "fun message"
+                        })
+                        response_encode = response.encode("utf-8")
+                        print("réponse envoyé:", response_encode)
+                        conn.sendall(response_encode)
+                        
 
     except OSError as e:
         print("Sent failed", e)
