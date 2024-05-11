@@ -52,44 +52,22 @@ def distance_to_win(server_json, actual_position):
         # Je renvoie la distance verticale qui me renvoie du bord
         return actual_position[0] 
 
-# Créer une fonction qui calcule la distance qui sépare mon adversaire du bord du plateau en fonction de si il est le 1 ou le 0
-# def distance_player2_to_win(server_json):
-#     #ici je vais suivre la même logique que avec le add blocker pour calculer ma distance 
-#     board = server_json['state']['board']
-#     pawn = 1
-#     #position_player_2=None
-#     if server_json["state"]["players"][1] == "Mournin":
-#         pawn = 0
-#         for i, elem in enumerate(board):
-#             if pawn in elem:
-#                 position_in_list = elem.index(pawn)
-#                 position_player_2=[i, position_in_list]
-#                 return 16 - int(position_player_2[0])
-#     else: 
-#         for i, elem in enumerate(board):
-#             if pawn in elem:
-#                 position_in_list = elem.index(pawn)
-#                 position_player_2 = [i, position_in_list]
-#                 return position_player_2[0]
 
 def distance_player2_to_win(server_json):
     board = server_json['state']['board']
-    pawn = 1 if server_json["state"]["players"][1] == "Mournin" else 0
-
-    # Trouver la position actuelle de votre adversaire
-    for i, row in enumerate(board):
-        for j, cell in enumerate(row):
-            if cell == pawn:
-                position_adversaire = (i, j)
-                break
-
-    # Calculer la distance jusqu'au bord opposé pour votre adversaire
-    if server_json['state']['current'] == 1:  # Si le joueur se déplace vers le haut
-        return position_adversaire[0]
-    else:  # Si le joueur se déplace vers le bas
-        return len(board) - position_adversaire[0] - 1
-
-        
+    pawn = 0 
+    if server_json["state"]["players"][1] == "Mournin" :
+        pawn = 1
+        pawn_2 = 0 
+        for i, elem in enumerate(board):
+            if pawn_2 in elem:
+                position_player_2 = i 
+                return len(board) - position_player_2
+    else : 
+        pawn_2 = 1
+        for i, elem in enumerate(board):
+            position_player_2 = i
+            return i 
 
 def move_right(server_json, actual_position):
     pawn = 0
@@ -187,10 +165,10 @@ def decide_move(server_json):
     #avec le mouv et le bord du plateau. 
     # Attention, il va falloir vérifier ces conditions pour les 2 cas, donc en fonction de si je suis en 1 ou en 0
 
-    if server_json['state']['board'][actual_position[0]][actual_position[1]]==0:
-        if "top" in possible_moves:
-            new_position = move_top(server_json, current_position)
-            distance_top = len
+    # if server_json['state']['board'][actual_position[0]][actual_position[1]]==0:
+    #     if "top" in possible_moves:
+    #         new_position = move_top(server_json, current_position)
+    #         distance_top = len
 
 #Créer la méthode qui permet d'ajouter des murs
 # Pour ajouter des murs, on doit renvoyer une liste de deux listes car le mur se place sur deux coordonées
@@ -198,17 +176,20 @@ def decide_move(server_json):
 # Stratégie : je vais essayer de faire en sorte de placer des murs aux alentours de l'adversaire chaque fois que c'est possible, du coup, je dois pouvoir être en mesure 
 # De connaître la position de mon adversaire après chaque tour 
 
+#Cette fonction me permet de placer un mur devant mon adversaire 
 def add_blocker(server_json):
     #Commencer par déterminer si je suis le 1 ou le 0
     board = server_json['state']['board']
-    pawn = 1
-    #position_player_2=None
-    if server_json["state"]["players"][1] == "Mournin":
-        pawn = 0
+    # par défaut je suis le joueur 0
+    pawn = 0
+    #Mais si dans l'état du jeu je correspond au seconde jouer, alors je suis sur une case 1, ce qui implique que le joueur 2 est sur la case 0
+    if server_json["state"]["players"][1] == "Ibtihal":
+        pawn = 1
+        pawn_2 = 0
         
         for i, elem in enumerate(board):
-            if pawn in elem:
-                position_in_list = elem.index(pawn)
+            if pawn_2 in elem:
+                position_in_list = elem.index(pawn_2)
                 position_player_2=[i, position_in_list]
         print("La position de mon adversaire est", position_player_2)
         if position_player_2[0] + 1 < len(server_json["state"]["board"]) and position_player_2[1]+2 < len(server_json["state"]["board"]):
@@ -216,16 +197,18 @@ def add_blocker(server_json):
             if server_json["state"]["board"][position_player_2[0]+1][position_player_2[1]] == 3 and server_json["state"]["board"][position_player_2[0]+1][position_player_2[1]+2] == 3:
                 return{"type" : "blocker", "position" : [[position_player_2[0]+1, position_player_2[1]], [position_player_2[0]+1, position_player_2[1]+2]]}
     else : 
+        pawn_2 = 1
         for i, elem in enumerate(board):
-            if pawn in elem:
-                position_in_list = elem.index(pawn)
+            if pawn_2 in elem:
+                position_in_list = elem.index(pawn_2)
                 position_player_2 = [i, position_in_list]
         print("position player 2", position_player_2)
         if position_player_2[0]-1 > 0 and position_player_2[1]+2 < len(server_json["state"]["board"]) :
             if server_json["state"]["board"][position_player_2[0]-1][position_player_2[1]] == 3 and server_json["state"]["board"][position_player_2[0]-1][position_player_2[1]+2] == 3:
                 return {"type" : "blocker", "position" : [[position_player_2[0]-1, position_player_2[1]], [position_player_2[0]-1, position_player_2[1]+2]]}
-    return False
-
+    
+#je vais créer une fonction 
+def strategy(server_json):
 
 
 def play(data_pong):
@@ -250,7 +233,7 @@ def play(data_pong):
                     current_position = actual_position(server_json)
                     my_distance = distance_to_win(server_json, actual_position(server_json))
                     your_distance = distance_player2_to_win(server_json)
-                    if my_distance > your_distance:
+                    if my_distance < your_distance:
                         move = decide_move(server_json)
                         print(f"Move: {move}")  # Add this line
                         response = json.dumps({
@@ -279,9 +262,3 @@ def play(data_pong):
 # Appel des fonctions
 game_connection(data_connection)
 play(data_pong)
-
-
-
-   
-
-    
