@@ -46,7 +46,8 @@ def distance_to_win(server_json, actual_position):
         print('Indice de mon pion:', server_json['state']['current'])
         a = len(board) - actual_position[0] - 1
         print('Ma distance calculée:',a)
-        return a    
+        return a  
+      
     elif  server_json['state']['current'] == 1 :            
             print('Indice de mon pion:', server_json['state']['current'])        
             print('Longueur du plateau:', len(board)) 
