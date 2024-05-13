@@ -435,7 +435,7 @@ def play(data_pong):
                             conn.sendall(response_encode)
                         if my_distance == your_distance:
                             move = strategy_1(server_json, current_position)
-                            print(f"Movuvement effectué_1: {move}")  
+                            print(f"Movuvement effectué_1: {move}")  # Add this line
                             response = json.dumps({
                             "response": "move",
                             "move": move,
