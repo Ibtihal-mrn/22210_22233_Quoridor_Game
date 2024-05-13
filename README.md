@@ -1,7 +1,5 @@
 # PI2C : Quoridor Game
 
-# PI2C : Quoridor Game
-
 Ce projet a pour but de créer une petite intelligence artificielle capable de jouer de façon autonome à un jeu de plateau qui dans notre cas est le jeu du quoridor. 
 
 ## Fonctionnalités de l'IA
